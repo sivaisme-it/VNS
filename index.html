@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visual Novel Studio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;700&family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+  <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/util.js"></script>
+  <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="mark" aria-hidden="true"></span>
+    <h1 class="title">Visual Novel <span>Studio</span></h1>
+  </div>
+  <p class="title-sub">Craft · Story · Scene</p>
+</header>
+
+<!-- MAIN STUDIO LAYOUT -->
+<div class="studio-layout">
+
+  <!-- LEFT PANEL: Assets + Characters -->
+  <div class="panel-col">
+
+    <!-- ASSETS -->
+    <section class="panel">
+      <div class="ptitle">Assets</div>
+      <div class="asset-grid">
+        <div class="asset-card">
+          <div class="apreview" id="prev-bg">🌆</div>
+          <div class="alabel">Background</div>
+          <input type="file" accept="image/*" id="up-bg">
+        </div>
+        <div class="asset-card">
+          <div class="apreview" id="prev-c1">👤</div>
+          <div class="alabel">Char 1</div>
+          <input type="file" accept="image/*" id="up-c1">
+        </div>
+        <div class="asset-card">
+          <div class="apreview" id="prev-c2">👤</div>
+          <div class="alabel">Char 2</div>
+          <input type="file" accept="image/*" id="up-c2">
+        </div>
+      </div>
+    </section>
+
+    <!-- CHARACTERS -->
+    <section class="panel">
+      <div class="ptitle">Characters</div>
+      <div id="char-list"></div>
+      <button id="add-char-btn">+ Add Character</button>
+    </section>
+
+    <!-- AUTOPLAY -->
+    <section class="panel autoplay-panel">
+      <div class="ptitle">Playback</div>
+      <div id="autoplay-bar">
+        <div id="auto-toggle">
+          <div class="toggle-track" id="toggle-track"><div class="toggle-thumb"></div></div>
+          <span class="toggle-label" id="toggle-lbl">Autoplay</span>
+        </div>
+        <div class="gap-group">
+          <span class="gap-label">Speed</span>
+          <input type="range" id="speed-slider" min="0.5" max="2" step="0.1" value="1">
+          <span id="speed-val">1.0×</span>
+        </div>
+        <div class="gap-group narr-group">
+          <span class="gap-label">Narr</span>
+          <select id="narr-voice" class="cvoice" title="Narrator TTS Voice">
+            <option value="">None</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- MIDDLE: Canvas / Game -->
+  <div class="canvas-col">
+    <div id="game">
+      <div id="bg"></div>
+      <div id="bg-overlay"></div>
+      <div id="rain-layer"></div>
+      <div id="char-container"></div>
+      <div id="pbar-wrap"><div id="pbar" style="width:0%"></div></div>
+      <div id="autoplay-ring">
+        <svg viewBox="0 0 14 14"><circle class="track" cx="7" cy="7" r="5"/><circle class="fill" id="ring-fill" cx="7" cy="7" r="5"/></svg>
+      </div>
+      <div id="game-tools">
+        <button id="popout-btn">⧉ Popout</button>
+        <button id="skip-btn">Skip ▸▸</button>
+      </div>
+      <div id="dialogue-wrap">
+        <div id="dialogue-box">
+          <div id="speaker-name"></div>
+          <div id="dialogue-text"><span id="text-content"></span><span id="dcursor"></span></div>
+          <div id="click-hint">▼ click to continue</div>
+        </div>
+      </div>
+      <div id="flash"></div>
+      <div id="overlay">
+        <div class="paw">🎬</div>
+        <h2>Visual Novel <span>Studio</span></h2>
+        <p>Upload assets, write your script — then hit Run.</p>
+        <button class="gbtn" id="default-btn">▶ Preview Default Story</button>
+      </div>
+    </div>
+
+    <!-- EXPORT -->
+    <div id="export-bar">
+      <button id="export-btn">Export to MP4</button>
+      <div id="export-progress" class="export-hidden">
+        <span id="export-status">Preparing...</span>
+        <div id="export-progress-bar">
+          <div id="export-progress-fill"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL: Script Editor -->
+  <div class="panel-col">
+    <section class="panel script-panel">
+      <div class="ptitle">Script Editor</div>
+      <div class="shelp">
+        <strong>Format:</strong> <code>character_id: dialogue text</code><br>
+        Narrator: <code>narr: Some description.</code><br>
+        Tags: <code>[mood:dawn]</code> <code>[bounce]</code>
+      </div>
+      <textarea id="script-editor" spellcheck="false"
+        placeholder="// Write your story here&#10;jamie: Good morning! [mood:dawn]&#10;alex: You look terrible. [bounce]&#10;narr: An awkward silence fell between them."></textarea>
+      <div id="script-error"></div>
+      <div class="btn-row">
+        <button id="run-btn">▶ Run Story</button>
+      </div>
+    </section>
+  </div>
+
+</div>
+
+<!-- GAME MODAL -->
+<div id="game-modal" class="modal-hidden">
+  <div id="modal-backdrop"></div>
+  <div id="modal-content">
+    <button id="modal-close">✕ Close</button>
+    <div id="modal-game">
+      <div id="mbg"></div>
+      <div id="mbg-overlay"></div>
+      <div id="mrain-layer"></div>
+      <div id="mchar-container"></div>
+      <div id="mpbar-wrap"><div id="mpbar" style="width:0%"></div></div>
+      <div id="mautoplay-ring">
+        <svg viewBox="0 0 14 14"><circle class="track" cx="7" cy="7" r="5"/><circle class="fill" id="mring-fill" cx="7" cy="7" r="5"/></svg>
+      </div>
+      <button id="mskip-btn">Skip ▸▸</button>
+      <div id="mdialogue-wrap">
+        <div id="mdialogue-box">
+          <div id="mspeaker-name"></div>
+          <div id="mdialogue-text"><span id="mtext-content"></span><span id="mdcursor"></span></div>
+          <div id="mclick-hint">▼ click to continue</div>
+        </div>
+      </div>
+      <div id="mflash"></div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
